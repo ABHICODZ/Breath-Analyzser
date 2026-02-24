@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  @apply bg-slate-900 text-slate-100 h-full w-full m-0 p-0 overflow-hidden;
+}
