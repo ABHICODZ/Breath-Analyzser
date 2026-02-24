@@ -16,17 +16,27 @@ class AStarSpatioTemporalRouter:
         Simulates retrieving the integral of predicted pollutant concentration $P(t)$ 
         along the edge from the Spatio-Temporal Model outputs.
         """
+        from app.ai.inference import AIPollutionPredictor
+        predictor = AIPollutionPredictor()
+        
+        # 1. Ask the AI Model / Physics Engine for the real-time predicted PM2.5 at this spatial edge
         # In a fully integrated system, this would query the DB or ML Model states
-        # For demonstration, we assume a static predicted value exists on the edge
-        # or we generate a dummy predicted value based on edge attributes.
+        pm25 = predictor.predict_edge_pollution(u, v, edge_data)
         
-        # Pull PM2.5 prediction from edge if exists, else synthesize a dummy value
-        pm25 = edge_data.get('predicted_pm25_avg', np.random.uniform(5.0, 150.0))
-        
-        # Return integration: PM2.5 * time_to_traverse
-        # Assuming walking/driving speed of 5 m/s for basic time estimation
-        length = edge_data.get('length', 10.0)
-        time_to_traverse = length / 5.0 
+        # 2. Return integration: PM2.5 * time_to_traverse
+        # Assuming average city walking speed of 1.4 m/s (5 km/h) for accurate exposure time
+        import ast
+        length_raw = edge_data.get('length', 10.0)
+        if isinstance(length_raw, str) and length_raw.startswith('['):
+            try:
+                length_list = ast.literal_eval(length_raw)
+                length = sum([float(x) for x in length_list])
+            except:
+                length = 10.0
+        else:
+            length = float(length_raw)
+            
+        time_to_traverse = length / 1.4
         
         return pm25 * time_to_traverse
 
@@ -74,7 +84,17 @@ class AStarSpatioTemporalRouter:
                 # We simply evaluate the first one (0) 
                 edge_data = edges[0]
                 
-                length = edge_data.get('length', 1.0)
+                import ast
+                length_raw = edge_data.get('length', 1.0)
+                if isinstance(length_raw, str) and length_raw.startswith('['):
+                    try:
+                        list_l = ast.literal_eval(length_raw)
+                        length = sum([float(x) for x in list_l])
+                    except:
+                        length = 1.0
+                else:
+                    length = float(length_raw)
+                    
                 exposure = self._get_pollutant_integral(current_node, neighbor, edge_data)
                 
                 # Equation: Weight = (alpha * L) + (beta * P)

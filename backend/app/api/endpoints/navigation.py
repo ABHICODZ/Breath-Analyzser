@@ -38,6 +38,53 @@ def convert_path_to_geojson(G: nx.MultiDiGraph, path: List[Any], name: str, colo
         ]
     }
 
+import os
+import osmnx as ox
+
+# Create a data directory for the cached map
+DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data")
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
+
+GRAPH_FILE = os.path.join(DATA_DIR, "hyderabad_cached.graphml")
+G_GLOBAL = None
+
+import math
+
+def haversine(lat1, lon1, lat2, lon2):
+    R = 6371000 # radius of Earth in meters
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = math.sin(dphi/2)**2 + math.cos(phi1)*math.cos(phi2)*math.sin(dlambda/2)**2
+    return 2 * R * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+def get_global_graph():
+    global G_GLOBAL
+    if G_GLOBAL is not None:
+        return G_GLOBAL
+        
+    print("Initializing Global Map Cache...")
+    if os.path.exists(GRAPH_FILE):
+        print(f"Loading city map from local cache: {GRAPH_FILE}")
+        G_GLOBAL = ox.load_graphml(GRAPH_FILE)
+    else:
+        print("Downloading single-city map from OSM (This only happens once!)...")
+        # Use an 8km radius around Hussain Sagar to cover more of the city (including Uppal)
+        center_point = (17.4239, 78.4738)
+        G_GLOBAL = ox.graph_from_point(center_point, dist=8000, network_type='drive', simplify=True)
+        
+        for u, v, key, data in G_GLOBAL.edges(keys=True, data=True):
+            if 'length' not in data:
+                data['length'] = 10.0
+            data['aspect_ratio'] = 0.8
+            data['svf'] = 0.5
+            
+        print(f"Saving city map to local cache: {GRAPH_FILE}")
+        ox.save_graphml(G_GLOBAL, GRAPH_FILE)
+        
+    return G_GLOBAL
+
 @router.get("/route", response_model=NavigationResponse)
 async def get_optimal_route(
     start_lat: float = Query(..., description="Starting node latitude"),
@@ -48,37 +95,52 @@ async def get_optimal_route(
 ):
     """
     Computes and compares the default shortest geographic path against
-    the Spatio-Temporal Clean-Air route.
+    the Spatio-Temporal Clean-Air route using a globally cached map to ensure millisecond latency.
     """
-    # 1. Fetch Global Graph 
-    # In a full app context, this graph should be loaded in memory on startup.
-    # We will instantiate a dummy graph here simulating the global state.
-    G = nx.MultiDiGraph()
-    G.add_node(1, y=start_lat, x=start_lon)
-    G.add_node(2, y=end_lat, x=end_lon)
-    G.add_node(3, y=(start_lat+end_lat)/2.0, x=(start_lon+end_lon)/2.0)
-    
-    # Clean indirect route
-    G.add_edge(1, 3, length=300.0, predicted_pm25_avg=15.0)
-    G.add_edge(3, 2, length=300.0, predicted_pm25_avg=12.0)
-    # Polluted direct route
-    G.add_edge(1, 2, length=500.0, predicted_pm25_avg=120.0)
-    
-    source_node = 1
-    target_node = 2
+    try:
+        # 1. Fetch cached Real City Street Network
+        G = get_global_graph()
+
+        # Snap coordinates to the nearest valid intersection nodes
+        source_node = ox.distance.nearest_nodes(G, start_lon, start_lat)
+        target_node = ox.distance.nearest_nodes(G, end_lon, end_lat)
+        
+        # Verify the requested GPS coordinates actually exist within our cached city network
+        slat, slon = G.nodes[source_node]['y'], G.nodes[source_node]['x']
+        tlat, tlon = G.nodes[target_node]['y'], G.nodes[target_node]['x']
+        
+        dist_start = haversine(start_lat, start_lon, slat, slon)
+        dist_end = haversine(end_lat, end_lon, tlat, tlon)
+        
+        if dist_start > 2500 or dist_end > 2500:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Addresses are outside the cached Hyderabad city limits. Start snapped by {int(dist_start)}m, End by {int(dist_end)}m. Please choose locations closer to the center (e.g., Banjara Hills, Secunderabad, Begumpet)."
+            )
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to load city infrastructure from cache: {str(e)}")
     
     # 2. Initialize Router
     engine = AStarSpatioTemporalRouter(G)
     
     try:
+        print(f"Starting A* Route calculation from node {source_node} to {target_node}...")
+        
         # 3. Compute Shortest Path (beta = 0.0)
+        print("[1/2] Calculating absolute Shortest Geographic Path...")
         path_s, dist_s, exp_s = engine.compute_route(source_node, target_node, beta=0.0)
         
         # 4. Compute Cleanest Path (beta dynamically mapped: 0 -> 0.0, 100 -> 1.0)
+        print(f"[2/2] Calculating Cleanest Air Path (Health Sensitivity Beta: {health_sensitivity}%)...")
         beta_val = health_sensitivity / 100.0
         path_c, dist_c, exp_c = engine.compute_route(source_node, target_node, beta=beta_val)
         
+        print("Success! Both routes compiled. Formatting GeoJSON...")
+        
     except nx.NetworkXNoPath:
+        print("A* Error: No feasible route between nodes!")
         raise HTTPException(status_code=404, detail="No feasible route found between coordinates.")
         
     # 5. Compile Statistics

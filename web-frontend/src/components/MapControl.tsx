@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Settings, Route, Navigation2 } from 'lucide-react';
 
 interface MapControlProps {
     healthSensitivity: number;
     setHealthSensitivity: (val: number) => void;
-    onCompareRoutes: () => void;
+    onCompareRoutes: (start: string, end: string) => void;
     isLoading: boolean;
+    loadingStep?: string;
     routeStats: any;
 }
 
@@ -14,8 +15,12 @@ export default function MapControl({
     setHealthSensitivity,
     onCompareRoutes,
     isLoading,
+    loadingStep,
     routeStats
 }: MapControlProps) {
+    const [startAddress, setStartAddress] = useState("Banjara Hills, Hyderabad");
+    const [endAddress, setEndAddress] = useState("Hussain Sagar, Hyderabad");
+
     return (
         <div className="absolute top-4 left-4 w-96 bg-white/90 backdrop-blur-md rounded-xl shadow-2xl p-6 border border-gray-100 font-sans z-[1000] transition-all duration-300">
 
@@ -33,11 +38,11 @@ export default function MapControl({
                 <div className="space-y-4">
                     <div className="relative">
                         <div className="absolute left-3 top-3 w-2.5 h-2.5 rounded-full border-2 border-gray-400"></div>
-                        <input type="text" value="Financial District, NY" readOnly className="w-full bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-default" />
+                        <input type="text" value={startAddress} onChange={(e) => setStartAddress(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all font-medium" />
                     </div>
                     <div className="relative">
                         <div className="absolute left-3 top-3 w-2.5 h-2.5 rounded-full border-2 border-blue-500"></div>
-                        <input type="text" value="Central Park, NY" readOnly className="w-full bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all cursor-default" />
+                        <input type="text" value={endAddress} onChange={(e) => setEndAddress(e.target.value)} className="w-full bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-lg pl-10 pr-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all font-medium" />
                     </div>
                 </div>
 
@@ -69,7 +74,7 @@ export default function MapControl({
                 </div>
 
                 <button
-                    onClick={onCompareRoutes}
+                    onClick={() => onCompareRoutes(startAddress, endAddress)}
                     disabled={isLoading}
                     className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-sm font-bold rounded-xl shadow-lg shadow-blue-500/30 flex items-center justify-center transition-all disabled:opacity-70 active:scale-[0.98]"
                 >
@@ -82,6 +87,12 @@ export default function MapControl({
                         </>
                     )}
                 </button>
+
+                {isLoading && loadingStep && (
+                    <div className="text-center text-xs text-blue-600 font-semibold animate-pulse mt-3 bg-blue-50 py-2 rounded-lg border border-blue-100">
+                        {loadingStep}
+                    </div>
+                )}
 
                 {routeStats && (
                     <div className="mt-6 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">

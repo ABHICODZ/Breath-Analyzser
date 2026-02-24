@@ -1,0 +1,26 @@
+services:
+  # TimescaleDB / PostgreSQL database for holding time-series pollution data
+  db:
+    image: timescale/timescaledb-ha:pg14-latest
+    container_name: breath_analyzer_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: breath_analyzer
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescaledb_data:/home/postgres/pgdata/data
+      - ./backend/app/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  # Redis for Celery Task Queues (used to fetch live OpenAQ API data periodically)
+  redis:
+    image: redis:alpine
+    container_name: breath_analyzer_redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+volumes:
+  timescaledb_data:

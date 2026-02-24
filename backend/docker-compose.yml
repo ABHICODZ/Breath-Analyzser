@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  db:
+    image: timescale/timescaledb-ha:pg14-latest
+    container_name: breath_analyzer_db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=breath_analyzer
+    ports:
+      - "5432:5432"
+    volumes:
+      - timescale_data:/home/postgres/pgdata/data
+      - ./app/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: always
+    command: ["postgres", "-c", "shared_preload_libraries=timescaledb"]
+
+volumes:
+  timescale_data:

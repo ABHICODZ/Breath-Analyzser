@@ -2,50 +2,105 @@ import React, { useState, useMemo } from 'react';
 import LeafletMap from './components/LeafletMap';
 import MapControl from './components/MapControl';
 
-function generateDummyData() {
-  const points = [];
-  for (let i = 0; i < 500; i++) {
-    points.push([
-      40.7128 + (Math.random() - 0.5) * 0.1,
-      -74.0060 + (Math.random() - 0.5) * 0.1,
-      Math.random()
-    ]);
-  }
-  return points;
+function useRealHeatmapData() {
+  const [data, setData] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    async function fetchOpenAQ() {
+      try {
+        // Fetch live air quality sensors in a 25km radius around Hyderabad
+        const res = await fetch('https://api.openaq.org/v2/latest?coordinates=17.3850,78.4867&radius=25000&limit=100');
+        const json = await res.json();
+
+        if (json && json.results) {
+          const points = json.results.map((r: any) => {
+            const pm25 = r.measurements.find((m: any) => m.parameter === 'pm25')?.value || 15.0;
+            // Normalize PM2.5 to a 0-1 intensity factor for Leaflet Heatmap
+            const intensity = Math.min(pm25 / 150.0, 1.0);
+            return [r.coordinates.latitude, r.coordinates.longitude, intensity];
+          });
+          setData(points);
+        }
+      } catch (e) {
+        console.error("OpenAQ live API fetch failed:", e);
+      }
+    }
+    fetchOpenAQ();
+  }, []);
+
+  return data;
 }
 
 function App() {
   const [healthSensitivity, setHealthSensitivity] = useState(50);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState<string>("");
   const [routeStats, setRouteStats] = useState<any>(null);
 
   const [shortestRoute, setShortestRoute] = useState<any>(null);
   const [cleanestRoute, setCleanestRoute] = useState<any>(null);
 
-  const heatmapData = useMemo(() => generateDummyData(), []);
+  const heatmapData = useRealHeatmapData();
 
-  const handleCompareRoutes = () => {
+  const handleCompareRoutes = async (startAddress: string, endAddress: string) => {
     setIsLoading(true);
-    setTimeout(() => {
-      setRouteStats({
-        exposure_reduction_pct: 17.1 + (healthSensitivity / 100 * 5),
-        distance_increase_pct: 2.8 + (healthSensitivity / 100 * 2)
-      });
+    setLoadingStep("Geocoding addresses via OpenStreetMap...");
+    setRouteStats(null);
+    setShortestRoute(null);
+    setCleanestRoute(null);
 
-      setShortestRoute([
-        [40.7050, -74.0100],
-        [40.7150, -73.9950],
-        [40.7650, -73.9700]
-      ]);
+    try {
+      // 1. Geocode Start Address
+      const startRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(startAddress)}`);
+      const startData = await startRes.json();
 
-      setCleanestRoute([
-        [40.7050, -74.0100],
-        [40.7300, -74.0200],
-        [40.7650, -73.9700]
-      ]);
+      // 2. Geocode Destination Address
+      const endRes = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(endAddress)}`);
+      const endData = await endRes.json();
 
+      if (!startData || startData.length === 0 || !endData || endData.length === 0) {
+        alert("Could not find GPS coordinates for one or both addresses.");
+        setLoadingStep("");
+        setIsLoading(false);
+        return;
+      }
+
+      const startLat = parseFloat(startData[0].lat);
+      const startLon = parseFloat(startData[0].lon);
+      const endLat = parseFloat(endData[0].lat);
+      const endLon = parseFloat(endData[0].lon);
+
+      // 3. Query Backend AI Routing Engine
+      setLoadingStep("Solving complex A* Route (May take 30-60s in Python)...");
+      const url = `http://localhost:8000/api/v1/navigation/route?start_lat=${startLat}&start_lon=${startLon}&end_lat=${endLat}&end_lon=${endLon}&health_sensitivity=${healthSensitivity}`;
+      const routeRes = await fetch(url);
+
+      if (!routeRes.ok) {
+        alert("API Error: Routing engine failed to find a continuous path between these points on the map.");
+        setLoadingStep("");
+        setIsLoading(false);
+        return;
+      }
+
+      const routeData = await routeRes.json();
+
+      // Update route statistics panel
+      setRouteStats(routeData.stats);
+
+      // Reverse GeoJSON [lon, lat] coordinates to Leaflet Polyline expected format [lat, lon]
+      const shortCoords = routeData.shortest_path_geojson.features[0].geometry.coordinates.map((c: number[]) => [c[1], c[0]]);
+      const cleanCoords = routeData.cleanest_path_geojson.features[0].geometry.coordinates.map((c: number[]) => [c[1], c[0]]);
+
+      setShortestRoute(shortCoords);
+      setCleanestRoute(cleanCoords);
+
+    } catch (err) {
+      console.error("Routing Error:", err);
+      alert("A network error occurred while reaching the routing engine.");
+    } finally {
+      setLoadingStep("");
       setIsLoading(false);
-    }, 800);
+    }
   };
 
   return (
@@ -62,6 +117,7 @@ function App() {
         setHealthSensitivity={setHealthSensitivity}
         onCompareRoutes={handleCompareRoutes}
         isLoading={isLoading}
+        loadingStep={loadingStep}
         routeStats={routeStats}
       />
 

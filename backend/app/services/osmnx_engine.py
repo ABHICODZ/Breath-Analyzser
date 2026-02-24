@@ -112,10 +112,9 @@ class CityGraphExtractor:
 
 if __name__ == "__main__":
     # Test script for a small bounding box
-    # Using a small neighborhood in Manhattan as an example for testing 
-    # since we requested building footprints
+    # Using a small municipality for testing since we requested building footprints
     print("Initializing extractor for testing...")
-    extractor = CityGraphExtractor("Financial District, Manhattan, New York, USA")
+    extractor = CityGraphExtractor("Hoboken, New Jersey, USA")
     extractor.extract_infrastructure()
     extractor.calculate_canyon_metrics()
     
