@@ -31,9 +31,12 @@ def create_app() -> FastAPI:
     # Fire ML inference loop immediately at startup (not lazily on first request)
     @app.on_event("startup")
     async def startup_event():
-        from app.api.endpoints.dashboard import _autonomous_ml_inference_loop
-        asyncio.create_task(_autonomous_ml_inference_loop())
-        print("[STARTUP] TNN background inference loop launched.")
+        try:
+            from app.api.endpoints.dashboard import _autonomous_ml_inference_loop
+            asyncio.create_task(_autonomous_ml_inference_loop())
+            print("[STARTUP] TNN background inference loop launched.")
+        except Exception as e:
+            print(f"[STARTUP] ML inference loop failed to launch (non-fatal, continuing): {e}")
 
     # Include routers
     app.include_router(api_router, prefix=settings.API_V1_STR)
