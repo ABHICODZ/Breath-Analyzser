@@ -12,6 +12,12 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "breath_analyzer"
     POSTGRES_PORT: int = 5432
     
+    # External APIs
+    WAQI_TOKEN: str | None = None
+    GROQ_API_KEY: str | None = None
+    VITE_SUPABASE_URL: str | None = None
+    VITE_SUPABASE_ANON_KEY: str | None = None
+    
     @property
     def async_database_url(self) -> str:
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_SERVER}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"

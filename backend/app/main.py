@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.endpoints import api_router
+import asyncio
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -26,6 +27,13 @@ def create_app() -> FastAPI:
     @app.get("/health")
     async def health_check():
         return {"status": "healthy"}
+
+    # Fire ML inference loop immediately at startup (not lazily on first request)
+    @app.on_event("startup")
+    async def startup_event():
+        from app.api.endpoints.dashboard import _autonomous_ml_inference_loop
+        asyncio.create_task(_autonomous_ml_inference_loop())
+        print("[STARTUP] TNN background inference loop launched.")
 
     # Include routers
     app.include_router(api_router, prefix=settings.API_V1_STR)
