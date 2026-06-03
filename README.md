@@ -30,7 +30,7 @@ Rather than waiting for physical sensor infrastructure to scale, our platform us
 
 Vayu Drishti is a full-stack, cloud-ready platform with four integrated layers:
 
-```
+```text
 ┌─────────────────────────────────────────────────────────────┐
 │                 VAYU DRISHTI PLATFORM                       │
 ├────────────────┬────────────────┬──────────────┬────────────┤
@@ -50,10 +50,10 @@ Vayu Drishti is a full-stack, cloud-ready platform with four integrated layers:
 | **Mapping** | Leaflet.js | Real-time, zoomable Delhi ward overlays |
 | **Backend API** | FastAPI (Python) | REST API serving live AQI predictions |
 | **ML Engine** | PyTorch (`TemporalSpatialNet`) | Spatial interpolation neural network |
-| **Authentication** | Supabase Auth + JWT | Role-based access (user / admin / officer) |
+| **Authentication** | Supabase Auth + JWT | Role-based access (citizen / admin / officer) |
 | **Database** | Supabase (PostgreSQL) | User profiles, complaints, tasks, session logs |
 | **Satellite Data** | Google Earth Engine (Sentinel-5P) | Live atmospheric telemetry feeds |
-| **AI Policy Engine** | Google Vertex AI (Gemini) | Auto-generated municipal action directives |
+| **Policy Engine** | Math Model + Multi-Agent LLM | Auto-generated municipal action directives & simulation |
 | **Deployment** | Docker + Google Cloud Run | Containerized production environment |
 
 ---
@@ -61,11 +61,11 @@ Vayu Drishti is a full-stack, cloud-ready platform with four integrated layers:
 ## 🚀 Key Features
 
 ### 🗺️ 1. Hyper-Local AQI Map
-The centerpiece of Vayu Drishti is a live, interactive Leaflet.js map overlaid on all 251 Delhi municipal wards. Instead of showing only the 20-odd hardware stations, the ML engine interpolates predicted PM2.5 values for every unmonitored location on the map — rendering a continuous, color-coded pollution heatmap across the entire city in real-time.
+The centerpiece of Vayu Drishti is a live, interactive Leaflet.js map overlaid on all 251 Delhi municipal wards. Instead of showing only the 20-odd hardware stations, the ML engine interpolates predicted PM2.5 values for every unmonitored location on the map.
 
 - **Ward-level granularity** — every one of Delhi's 251 wards has an individual prediction.
 - **Dynamic color coding** — Green → Satisfactory → Moderate → Poor → Very Poor → Severe.
-- **Live refresh** — the backend autonomously runs the TNN inference loop on startup, continuously updating predictions.
+- **Live refresh** — the backend autonomously runs the TNN inference loop every 5 minutes.
 
 ### 🧠 2. The AI Model (`TemporalSpatialNet`)
 The platform's prediction engine is a custom PyTorch deep neural network trained on real CPCB/Kaggle Delhi AQI datasets. It processes 7 environment variables per location and outputs an accurate PM2.5 value in µg/m³.
@@ -74,74 +74,48 @@ The platform's prediction engine is a custom PyTorch deep neural network trained
 - **Spatial:** Latitude, Longitude, Distance from Delhi Centroid
 - **Chemical:** SO2, NO2, PM10, CO (ppb) from nearby stations
 
-**Neural Architecture:**
-```
-Input (7) → Dense(256) → BatchNorm → SiLU → Dropout(0.25)
-          → Dense(128) → BatchNorm → SiLU → Dropout(0.15)
-          → Dense(64)  → SiLU
-          → Output(1)  [PM2.5 µg/m³]
-```
+### 🛡️ 3. Enterprise Admin Command Center
+The platform includes a fully secured, role-gated Enterprise Admin Dashboard. Access is controlled via Supabase Role-Based Access Control — only users with `admin` or `officer` roles are granted entry.
 
-**Why this design?**
-- **SiLU (Swish)** activation outperforms ReLU on smooth regression over spatial data.
-- **Huber Loss (δ=10)** used instead of MSE — prevents pollution spike anomalies from dominating gradients.
-- **StandardScaler** normalization ensures chemical feature ranges don't skew distance-based spatial features.
+**Admin Capabilities:**
+- **Live Operations Monitoring:** Real-time AQI station feeds, dynamic heatmaps, and critical hotspot tracking.
+- **Digital Twin Policy Simulator:** A mathematical simulator using CPCB source apportionment data to predict exactly how AQI will respond to specific interventions (e.g. 50% traffic reduction, construction bans) matching GRAP regulatory stages.
+- **Deep Analytics:** City-wide statistical summaries, top worst/best wards, and AQI distribution metrics.
 
-The trained model artifacts (`vayu_spatial_PRODUCTION.pt` + `vayu_scaler.pkl`) are loaded directly by the FastAPI backend for live inference.
+### 🏛️ 4. AI Governance Council
+A multi-agent LLM framework that simulates a real municipal policy council. 5 distinct AI personas (Scientist, Public Health Officer, Economist, Enforcement Officer, Citizen) hold a 3-round debate on proposed interventions, outputting a clear consensus, voting tally, and final action recommendation for administrators.
 
-### 🛡️ 3. Admin Command Portal (`/admin`)
-The platform includes a fully secured, role-gated Admin Portal accessible at `/admin`. Access is controlled via Supabase Role-Based Access Control — only users with `admin` or `officer` roles in the `profiles` table are granted entry.
-
-**Admin Portal Sections:**
-
-| Section | Route | Description |
-| :--- | :--- | :--- |
-| **Live Monitoring** | `/admin` | Real-time AQI station feeds, model predictions, alert thresholds |
-| **Complaints Panel** | `/admin/complaints` | Manage citizen-submitted air quality complaints across wards |
-| **Tasks Board** | `/admin/tasks` | Assign & track enforcement tasks to field officers |
-| **Policy Hub** | `/admin/reports` | Generate AI-powered policy directives & export reports |
-
-The admin sidebar displays the authenticated officer's role and avatar, links to all panels, and provides a secure one-click logout.
-
-### 🛰️ 4. Satellite Intelligence (Google Earth Engine)
-The backend connects live to **Sentinel-5P TROPOMI** atmospheric sensors via the Google Earth Engine Python API. This provides a second source of atmospheric truth — ground-level CPCB data fused with orbital satellite measurements — enabling the model to detect pollution anomalies invisible to sparse ground-station grids.
-
-### 🤖 5. Gemini AI Policy Engine
-When PM2.5 breaches critical thresholds, the backend routes current satellite + ground telemetry payloads to **Google Vertex AI (Gemini)**, which generates specific, context-aware municipal action directives — not generic alerts, but prescriptive enforcement recommendations tailored to the exact ward and pollutant combination being flagged.
+### 🛰️ 5. Satellite Intelligence (Google Earth Engine)
+The backend connects live to **Sentinel-5P TROPOMI** atmospheric sensors via the Google Earth Engine Python API. This detects pollution anomalies invisible to sparse ground-station grids (like biomass burning via CO density or construction dust via Aerosol Index).
 
 ### 👤 6. User Profile System
-Citizens logging in via Supabase authentication have access to a profile page (`/profile`) showing their registered ward, saved AQI history, submitted complaints, and notification preferences.
+Citizens logging in via Supabase authentication have access to personalized health alerts. A specialized algorithm calculates individualized "safe outdoor exposure" times based on real-time AQI, the user's age, and whether they have asthma.
 
 ---
 
 ## 📂 Project Structure
 
-```
-vaayudrishti/
+```text
+VayuDrishti/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py                  # FastAPI app factory + CORS + request logging
-│   │   ├── api/                     # All REST endpoints
-│   │   ├── ml/                      # TNN model loader & inference engine
-│   │   ├── services/                # GEE, Gemini AI, WAQI data services
-│   │   ├── db/                      # Supabase DB helpers
-│   │   └── core/                    # Config, settings, dependencies
-│   ├── train_vayu_v2.py             # 🔬 Core ML training script (this repo)
-│   ├── vayu_model_v5_best.pt        # Trained model weights (v5)
-│   ├── vayu_scaler_v5.pkl           # Feature scaler for production inference
+│   │   ├── api/                     # All REST endpoints (Dashboard, GEE, Admin, Council)
+│   │   ├── services/                # ML Engine, Policy Simulator, Satellite services
+│   │   ├── db/                      # Supabase DB models & SQLAlchemy connections
+│   │   └── core/                    # Config, settings, celery tasks
+│   ├── train_vayu_v2.py             # 🔬 Core ML training scripts
 │   └── requirements.txt             # Python dependencies
 ├── web-frontend/
 │   ├── src/
-│   │   ├── App.tsx                  # Main map dashboard & AQI visualization
-│   │   ├── AppRouter.tsx            # React Router (/, /admin/*, /profile)
-│   │   ├── admin/
-│   │   │   ├── AdminGate.tsx        # Auth gating + admin sidebar shell
-│   │   │   ├── LiveMonitoring.tsx   # Real-time station feeds
-│   │   │   ├── ComplaintsPanel.tsx  # Citizen complaint manager
-│   │   │   ├── TasksBoard.tsx       # Officer task assignments
-│   │   │   └── ReportingPanel.tsx   # Policy hub & reports
-│   │   └── pages/
-│   │       └── UserProfilePage.tsx  # Citizen profile & history
+│   │   ├── App.tsx                  # Main map dashboard & application routing
+│   │   ├── pages/
+│   │   │   ├── EnterpriseAdminDashboard.tsx  # Advanced Command Center UI
+│   │   │   ├── AIAgentsCouncil.tsx           # Multi-agent simulation UI
+│   │   │   └── UserProfile.tsx               # Citizen profile & history
+│   │   ├── components/
+│   │   │   └── LeafletMap.tsx       # Real-time data visualization
+│   │   └── lib/apiClient.ts         # Robust frontend API client
 │   └── package.json
 ├── supabase_schema.sql              # DB schema for profiles, complaints, tasks
 └── README.md
@@ -155,7 +129,6 @@ vaayudrishti/
 - Python 3.9+
 - Node.js 18+
 - A Supabase project (free tier works)
-- (Optional) Google Cloud project for GEE + Vertex AI
 
 ### 1. Backend
 ```bash
@@ -169,15 +142,6 @@ cp .env.example .env
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**Key `.env` variables:**
-```env
-SUPABASE_URL=https://your-project.supabase.co
-SUPABASE_SERVICE_KEY=your-service-role-key
-WAQI_TOKEN=your-waqi-api-token
-GCP_PROJECT_ID=your-gcp-project
-CORS_ORIGINS=http://localhost:5173
-```
-
 ### 2. Frontend
 ```bash
 cd web-frontend
@@ -186,40 +150,20 @@ npm run dev
 # → http://localhost:5173
 ```
 
-### 3. Admin Portal Access
-Navigate to `http://localhost:5173/admin`. You must be logged in with a Supabase account that has `role = 'admin'` or `role = 'officer'` set in the `profiles` table.
-
 ---
 
 ## 🔬 Training the ML Model
 
-The model training script lives in `backend/train_vayu_v2.py`. To retrain:
+The model training scripts live in the `backend/` directory. To retrain the production model:
 
 ```bash
 cd backend
-# Place datasets in dataset_extracted/
-#   - delhi_aqi.csv
-#   - final_dataset.csv
-python train_vayu_v2.py
+python train_vayu_real_data.py
 ```
 
 **Outputs:**
-- `vayu_spatial_PRODUCTION.pt` — model weights (copy to `backend/app/services/`)
-- `vayu_scaler.pkl` — feature scaler for live inference
-
----
-
-## 📊 Model Performance
-
-| Metric | Value |
-| :--- | :--- |
-| Training split | 85% train / 15% validation |
-| Epochs | 150 |
-| Optimizer | AdamW (lr=1e-3, wd=1e-4) |
-| Scheduler | CosineAnnealingLR |
-| Loss Function | HuberLoss (δ=10.0) |
-| Best Val Loss | ~4.0 |
-| MAE (approx.) | ~4.2 µg/m³ |
+- `app/services/vayu_spatial_PRODUCTION.pt` — Production model weights
+- Scalers for live inference
 
 ---
 
