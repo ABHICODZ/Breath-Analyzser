@@ -332,7 +332,7 @@ export default function EnterpriseAdminDashboard({ userProfile, session, onBack 
                 <div className="bg-slate-900 p-3 rounded">
                   <div className="text-slate-400 text-xs">Overview Data</div>
                   <div className={`text-lg font-bold ${overview ? 'text-green-400' : 'text-red-400'}`}>
-                    {overview ? '✅ LOADED' : '❌ MISSING'}
+                    {overview ? '✓ LOADED' : '❌ MISSING'}
                   </div>
                   {overview && (
                     <div className="text-xs text-slate-500 mt-1">
@@ -353,19 +353,19 @@ export default function EnterpriseAdminDashboard({ userProfile, session, onBack 
                 <div className="bg-slate-900 p-3 rounded">
                   <div className="text-slate-400 text-xs">Distribution</div>
                   <div className={`text-lg font-bold ${distribution ? 'text-green-400' : 'text-red-400'}`}>
-                    {distribution ? '✅ LOADED' : '❌ MISSING'}
+                    {distribution ? '✓ LOADED' : '❌ MISSING'}
                   </div>
                 </div>
                 <div className="bg-slate-900 p-3 rounded">
                   <div className="text-slate-400 text-xs">Loading State</div>
                   <div className={`text-lg font-bold ${loading ? 'text-yellow-400' : 'text-green-400'}`}>
-                    {loading ? '⏳ YES' : '✅ NO'}
+                    {loading ? '⏳ YES' : '✓ NO'}
                   </div>
                 </div>
                 <div className="bg-slate-900 p-3 rounded">
                   <div className="text-slate-400 text-xs">Error</div>
                   <div className={`text-lg font-bold ${error ? 'text-red-400' : 'text-green-400'}`}>
-                    {error || '✅ NONE'}
+                    {error || '✓ NONE'}
                   </div>
                 </div>
               </div>
