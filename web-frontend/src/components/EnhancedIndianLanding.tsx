@@ -243,7 +243,7 @@ export default function EnhancedIndianLanding({ onLaunch }: { onLaunch: () => vo
                 desc: "End-to-end testing against live WAQI government data across 6 Delhi locations",
                 metric: "69.5% baseline accuracy",
                 color: "#FFFFFF",
-                icon: "✅"
+                icon: "✓"
               },
               {
                 phase: "Phase 3",
