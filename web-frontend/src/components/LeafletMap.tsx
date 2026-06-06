@@ -56,7 +56,7 @@ export default function LeafletMap({ wards, selectedWard, onWardClick, granulari
     useEffect(() => {
         if (!mapInstance.current || wards.length === 0) return;
 
-        const geojsonFile = granularity === 'ward' ? '/kaggle_wards.geojson' : '/delhi_wards.geojson';
+        const geojsonFile = granularity === 'ward' ? '/Delhi_Wards.geojson' : '/delhi_wards.geojson';
         
         fetch(geojsonFile)
             .then(res => res.json())
