@@ -37,45 +37,14 @@ if DEVICE.type == "cuda":
     print(f"[VAYU] GPU: {torch.cuda.get_device_name(0)}")
 
 # ─── Delhi CPCB Station Coordinates ──────────────────────────────────────────
-# Real latitude/longitude for the named monitoring stations in the dataset.
-# These are used to add spatial features (lat, lon, dist_center) to each row.
-STATION_COORDS = {
-    "Alipur": (28.8153, 77.153),
-    "Anand Vihar": (28.6476, 77.3158),
-    "Ashok Vihar": (28.6954, 77.1817),
-    "Aya Nagar": (28.4707, 77.1271),
-    "Bawana": (28.7954, 77.0601),
-    "CRRI Mathura Road": (28.5513, 77.2736),
-    "DTU": (28.7501, 77.1113),
-    "Dwarka-Sector 8": (28.5644, 77.0573),
-    "IGI Airport (T3)": (28.563, 77.0944),
-    "IHBAS Dilshad Garden": (28.6814, 77.311),
-    "ITO": (28.6286, 77.2333),
-    "Jahangirpuri": (28.7324, 77.1707),
-    "Jawaharlal Nehru Stadium": (28.5829, 77.2343),
-    "Lodhi Road": (28.5919, 77.2273),
-    "Major Dhyan Chand National Stadium": (28.6113, 77.2458),
-    "Mandir Marg": (28.6365, 77.201),
-    "Mundka": (28.6847, 77.0766),
-    "Najafgarh": (28.5702, 76.9337),
-    "Narela": (28.8228, 77.1019),
-    "Nehru Nagar": (28.5679, 77.2505),
-    "North Campus DU": (28.6896, 77.2114),
-    "NSIT Dwarka": (28.609, 77.0326),
-    "Okhla Phase-2": (28.5448, 77.2715),
-    "Patparganj": (28.6237, 77.2872),
-    "Punjabi Bagh": (28.674, 77.1349),
-    "Pusa": (28.6391, 77.1601),
-    "R K Puram": (28.5648, 77.1744),
-    "Rohini": (28.7325, 77.1199),
-    "Shadipur": (28.6517, 77.1581),
-    "Siri Fort": (28.5504, 77.2159),
-    "Sonia Vihar": (28.7105, 77.2494),
-    "Sri Aurobindo Marg": (28.5313, 77.2024),
-    "Vivek Vihar": (28.6723, 77.3152),
-    "Wazirpur": (28.6997, 77.1654),
-}
-DELHI_CENTER = (28.6139, 77.2090)
+# Imported from app/core/stations.py — the single source of truth.
+# All 40 stations are defined there. Training, inference, and testing
+# all reference the same dictionary.
+import sys
+_backend_dir = os.path.dirname(os.path.abspath(__file__))
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
+from app.core.stations import STATION_COORDS, DELHI_CENTER
 
 # ─── Dataset ──────────────────────────────────────────────────────────────────
 
