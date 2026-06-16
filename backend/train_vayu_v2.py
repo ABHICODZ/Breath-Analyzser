@@ -37,31 +37,14 @@ if DEVICE.type == "cuda":
     print(f"[VAYU] GPU: {torch.cuda.get_device_name(0)}")
 
 # ─── Delhi CPCB Station Coordinates ──────────────────────────────────────────
-# Real latitude/longitude for the named monitoring stations in the dataset.
-# These are used to add spatial features (lat, lon, dist_center) to each row.
-STATION_COORDS = {
-    "Anand Vihar":          (28.6508,  77.3152),
-    "Punjabi Bagh":         (28.6683,  77.1167),
-    "Rohini":               (28.7327,  77.1180),
-    "Mandir Marg":          (28.6341,  77.2005),
-    "Patparganj":           (28.6202,  77.2877),
-    "Lodhi Road":           (28.5897,  77.2219),
-    "Dwarka":               (28.5766,  77.0759),
-    "RK Puram":             (28.5648,  77.1744),
-    "Jahangirpuri":         (28.7330,  77.1720),
-    "Shadipur":             (28.6516,  77.1580),
-    "Okhla":                (28.5313,  77.2707),
-    "Wazirpur":             (28.7005,  77.1656),
-    "Narela":               (28.8206,  77.1011),
-    "Burari Crossing":      (28.7257,  77.2034),
-    "DTU":                  (28.7496,  77.1163),
-    "Pusa":                 (28.6370,  77.1722),
-    "ITO":                  (28.6286,  77.2410),
-    "Mundka":               (28.6824,  77.0305),
-    "Najafgarh":            (28.5727,  76.9334),
-    "Aya Nagar":            (28.4829,  77.1267),
-}
-DELHI_CENTER = (28.6139, 77.2090)
+# Imported from app/core/stations.py — the single source of truth.
+# All 40 stations are defined there. Training, inference, and testing
+# all reference the same dictionary.
+import sys
+_backend_dir = os.path.dirname(os.path.abspath(__file__))
+if _backend_dir not in sys.path:
+    sys.path.insert(0, _backend_dir)
+from app.core.stations import STATION_COORDS, DELHI_CENTER
 
 # ─── Dataset ──────────────────────────────────────────────────────────────────
 

@@ -3,7 +3,9 @@ runtime: python311
 instance_class: F2
 
 env_variables:
-  WAQI_TOKEN: "9abbe99f4595fa8a4d20dd26a06db8e375273034"
+  # [DEPRECATED: WAQI] — WAQI_TOKEN replaced by OPENAQ_API_KEY as of 2026-06-15
+  # WAQI_TOKEN: "9abbe99f4595fa8a4d20dd26a06db8e375273034"
+  OPENAQ_API_KEY: "a48c3556e253887d4098147a13ff033b81ccd7ac36fede20ff5c3b8eb7be4029"
   GCP_PROJECT_ID: "gee-data-490807"
   GCP_LOCATION: "us-central1"
   SUPABASE_URL: "https://tmavkmymbdcmugunjtle.supabase.co"

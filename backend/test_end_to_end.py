@@ -13,7 +13,6 @@ import sys
 
 # Configuration
 API_BASE = "http://localhost:8080"
-WAQI_BASE = "https://api.waqi.info"
 
 # Test locations in Delhi
 TEST_LOCATIONS = [
@@ -236,79 +235,6 @@ def test_recommendations():
         print_error(f"Recommendations test failed: {e}")
         test_results["failed"] += 1
         return []
-
-def compare_with_waqi(location: Dict, our_aqi: int, our_pm25: float):
-    """Compare our AQI values with WAQI real-time data"""
-    print_header(f"AQI VALIDATION: {location['name']}")
-    test_results["total"] += 1
-    
-    try:
-        # Get WAQI data for this location
-        print_info(f"Fetching WAQI data for {location['lat']}, {location['lon']}...")
-        
-        # Note: WAQI requires API token, check if available
-        import os
-        waqi_token = os.getenv("WAQI_TOKEN")
-        
-        if not waqi_token:
-            print_warning("WAQI_TOKEN not found in environment, skipping external validation")
-            test_results["warnings"] += 1
-            return
-        
-        response = requests.get(
-            f"{WAQI_BASE}/feed/geo:{location['lat']};{location['lon']}/",
-            params={"token": waqi_token},
-            timeout=10
-        )
-        
-        if response.status_code == 200:
-            data = response.json()
-            
-            if data.get("status") == "ok":
-                waqi_data = data.get("data", {})
-                waqi_aqi = waqi_data.get("aqi", "N/A")
-                waqi_pm25 = waqi_data.get("iaqi", {}).get("pm25", {}).get("v", "N/A")
-                station_name = waqi_data.get("city", {}).get("name", "Unknown")
-                
-                print_info(f"\nStation: {station_name}")
-                print_info(f"WAQI AQI: {waqi_aqi}")
-                print_info(f"WAQI PM2.5: {waqi_pm25}")
-                print_info(f"Our AQI: {our_aqi}")
-                print_info(f"Our PM2.5: {our_pm25}")
-                
-                # Calculate difference
-                if isinstance(waqi_aqi, (int, float)) and isinstance(our_aqi, (int, float)):
-                    diff = abs(waqi_aqi - our_aqi)
-                    diff_pct = (diff / waqi_aqi * 100) if waqi_aqi > 0 else 0
-                    
-                    print_info(f"\nDifference: {diff} AQI points ({diff_pct:.1f}%)")
-                    
-                    if diff_pct < 10:
-                        print_success("✓ Excellent match (< 10% difference)")
-                        test_results["passed"] += 1
-                    elif diff_pct < 25:
-                        print_success("✓ Good match (< 25% difference)")
-                        test_results["passed"] += 1
-                    elif diff_pct < 50:
-                        print_warning("⚠ Moderate difference (25-50%)")
-                        test_results["warnings"] += 1
-                    else:
-                        print_warning(f"⚠ Large difference (> 50%) - May indicate different measurement times or locations")
-                        test_results["warnings"] += 1
-                else:
-                    print_warning("Could not compare AQI values (invalid data)")
-                    test_results["warnings"] += 1
-            else:
-                print_warning(f"WAQI returned status: {data.get('status')}")
-                test_results["warnings"] += 1
-        else:
-            print_warning(f"WAQI request failed with status {response.status_code}")
-            test_results["warnings"] += 1
-            
-    except Exception as e:
-        print_warning(f"WAQI comparison failed: {e}")
-        test_results["warnings"] += 1
-
 def test_navigation():
     """Test 6: Navigation/Routing Engine"""
     print_header("TEST 6: Navigation & Routing")
@@ -426,17 +352,8 @@ def run_all_tests():
     test_wind_grid()
     time.sleep(1)
     
-    # AQI Validation: Compare with WAQI
-    if wards:
-        print_header("AQI VALIDATION AGAINST REAL SOURCES")
-        for location in TEST_LOCATIONS[:3]:  # Validate first 3 locations
-            # Find closest ward to this location
-            closest_ward = min(wards, key=lambda w: 
-                ((w['lat'] - location['lat'])**2 + (w['lon'] - location['lon'])**2)**0.5
-            )
-            compare_with_waqi(location, closest_ward['aqi'], closest_ward['pm25'])
-            time.sleep(2)  # Rate limiting
-    
+    # [DEPRECATED: WAQI] — AQI validation against WAQI has been removed.
+    # Use test_blind_station.py for validation against OpenAQ live data.    
     # Print Summary
     print_header("TEST SUMMARY")
     print(f"\n{Colors.BOLD}Total Tests: {test_results['total']}{Colors.RESET}")
