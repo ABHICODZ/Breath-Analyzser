@@ -106,19 +106,46 @@ export default function LeafletMap({ wards, selectedWard, onWardClick, granulari
                     },
                     onEachFeature: (feature, layer_obj) => {
                         const featureId = feature?.properties?.ward_no || feature?.properties?.name || feature?.properties?.ward_name;
-                        const wardData = wards.find(w => w.id === String(featureId));
+                        
+                        // Robust lookup: First by ID, then by Name
+                        let wardData = wards.find(w => w.id === String(featureId));
+                        if (!wardData) {
+                            const fallbackName = feature?.properties?.name || feature?.properties?.ward_name || '';
+                            if (fallbackName) {
+                                wardData = wards.find(w => w.name.toLowerCase() === fallbackName.toLowerCase());
+                            }
+                        }
+
+                        // Add visual hover effects
+                        layer_obj.on('mouseover', function (e) {
+                            const targetLayer = e.target;
+                            targetLayer.setStyle({
+                                weight: 4,
+                                color: '#ffffff',
+                                dashArray: '',
+                                fillOpacity: 0.8
+                            });
+                            targetLayer.bringToFront();
+                        });
+
+                        layer_obj.on('mouseout', function (e) {
+                            if (geoJsonLayer.current) {
+                                geoJsonLayer.current.resetStyle(e.target);
+                            }
+                        });
+
+                        // Always bind a tooltip
+                        const wardName = wardData ? wardData.name : (feature?.properties?.name || feature?.properties?.ward_name || `Ward ${featureId}`);
+                        let tooltipContent = `<div style="text-align:center; padding: 4px;"><b>${wardName}</b><br/>`;
+
                         if (wardData) {
-                            // Wire the Interaction Engine!
                             layer_obj.on('click', () => {
                                 onWardClick(wardData);
                                 if (mapInstance.current) {
-                                    // Smooth camera pan to the clicked node
                                     mapInstance.current.flyTo([wardData.lat, wardData.lon], 13, { duration: 1.0 });
                                 }
                             });
                             
-                            // Dynamic tooltip based on layer
-                            let tooltipContent = `<div style="text-align:center; padding: 4px;"><b>${wardData.name}</b><br/>`;
                             if (layer === 'aqi') {
                                 tooltipContent += `<span style="color:#64748b; font-size:10px;">AQI: </span><strong style="font-size:14px; color:${wardData.aqi > 300 ? '#ef4444' : '#f97316'};">${wardData.aqi}</strong>`;
                             } else if (layer === 'pm25') {
@@ -126,10 +153,12 @@ export default function LeafletMap({ wards, selectedWard, onWardClick, granulari
                             } else if (layer === 'sources') {
                                 tooltipContent += `<span style="color:#64748b; font-size:10px;">Source: </span><strong style="font-size:12px;">${wardData.dominant_source}</strong>`;
                             }
-                            tooltipContent += `</div>`;
-                            
-                            layer_obj.bindTooltip(tooltipContent, { direction: 'top', sticky: true, className: 'custom-tooltip' });
+                        } else {
+                            tooltipContent += `<span style="color:#64748b; font-size:10px;">Data not available</span>`;
                         }
+                        
+                        tooltipContent += `</div>`;
+                        layer_obj.bindTooltip(tooltipContent, { direction: 'top', sticky: true, className: 'custom-tooltip' });
                     }
                 }).addTo(mapInstance.current!);
             })
